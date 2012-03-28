@@ -76,6 +76,7 @@
 -(NSString*) encodedPostDataString;
 - (void) showLocalNotification;
 - (void) endBackgroundTask;
+- (void)updateHeadersForPostDataEncoding;
 
 @end
 
@@ -508,46 +509,13 @@
     
     [self.request setHTTPMethod:method];
     
-    NSString *charset = (__bridge NSString *)CFStringConvertEncodingToIANACharSetName(CFStringConvertNSStringEncodingToEncoding(self.stringEncoding));
-    
-    [self.request setValue:[NSString stringWithFormat:@"%@, en-us", 
-                            [[NSLocale preferredLanguages] componentsJoinedByString:@", "]
-                            ] forHTTPHeaderField:@"Accept-Language"];
-    
-    if (([method isEqualToString:@"POST"] ||
-         [method isEqualToString:@"PUT"]) && (params && [params count] > 0)) {
+    [self updateHeadersForPostDataEncoding];
       
-      switch (self.postDataEncoding) {
+      
+    [self.request setValue:[NSString stringWithFormat:@"%@, en-us", 
+                          [[NSLocale preferredLanguages] componentsJoinedByString:@", "]] forHTTPHeaderField:@"Accept-Language"];
+
           
-        case MKNKPostDataEncodingTypeURL: {
-          [self.request setValue:
-           [NSString stringWithFormat:@"application/x-www-form-urlencoded; charset=%@", charset]
-              forHTTPHeaderField:@"Content-Type"];
-        }
-          break;
-        case MKNKPostDataEncodingTypeJSON: {
-          if([NSJSONSerialization class]) {
-            [self.request setValue:
-             [NSString stringWithFormat:@"application/json; charset=%@", charset]
-                forHTTPHeaderField:@"Content-Type"];
-          } else {
-            [self.request setValue:
-             [NSString stringWithFormat:@"application/x-www-form-urlencoded; charset=%@", charset]
-                forHTTPHeaderField:@"Content-Type"];
-          }
-        }
-          break;
-        case MKNKPostDataEncodingTypePlist: {
-          [self.request setValue:
-           [NSString stringWithFormat:@"application/x-plist; charset=%@", charset]
-              forHTTPHeaderField:@"Content-Type"];
-        }
-          
-        default:
-          break;
-      }
-    }
-    
     self.state = MKNetworkOperationStateReady;
   }
   
@@ -560,6 +528,51 @@
     [self.request addValue:obj forHTTPHeaderField:key];
   }];
 }
+
+- (void)setPostDataEncoding:(MKNKPostDataEncodingType)postDataEncoding {
+    _postDataEncoding = postDataEncoding;
+    [self updateHeadersForPostDataEncoding];
+}
+
+- (void)updateHeadersForPostDataEncoding {
+    NSString *charset = (__bridge NSString *)CFStringConvertEncodingToIANACharSetName(CFStringConvertNSStringEncodingToEncoding(self.stringEncoding));
+  
+    if (([self.HTTPMethod isEqualToString:@"POST"] ||
+         [self.HTTPMethod isEqualToString:@"PUT"])) {
+        
+        switch (self.postDataEncoding) {
+                
+            case MKNKPostDataEncodingTypeURL: {
+                [self.request setValue:
+                 [NSString stringWithFormat:@"application/x-www-form-urlencoded; charset=%@", charset]
+                    forHTTPHeaderField:@"Content-Type"];
+            }
+                break;
+            case MKNKPostDataEncodingTypeJSON: {
+                if([NSJSONSerialization class]) {
+                    [self.request setValue:
+                     [NSString stringWithFormat:@"application/json; charset=%@", charset]
+                        forHTTPHeaderField:@"Content-Type"];
+                } else {
+                    [self.request setValue:
+                     [NSString stringWithFormat:@"application/x-www-form-urlencoded; charset=%@", charset]
+                        forHTTPHeaderField:@"Content-Type"];
+                }
+            }
+                break;
+            case MKNKPostDataEncodingTypePlist: {
+                [self.request setValue:
+                 [NSString stringWithFormat:@"application/x-plist; charset=%@", charset]
+                    forHTTPHeaderField:@"Content-Type"];
+            }
+                
+            default:
+                break;
+        }
+    }
+
+}
+
 
 /*
  Printing a MKNetworkOperation object is printed in curl syntax
@@ -1239,5 +1252,8 @@ totalBytesExpectedToWrite:(NSInteger)totalBytesExpectedToWrite {
 #endif
   
 }
+
+
+
 
 @end
